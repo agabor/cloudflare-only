@@ -37,7 +37,9 @@ class CF_Admin_Page {
 		$current_ip_is_cloudflare = ! empty( $current_ip ) ? CF_Request_Filter::is_cloudflare_ip( $current_ip ) : false;
 		$present_cloudflare_headers = CF_Request_Filter::get_present_cloudflare_headers();
 		$has_cloudflare_headers = ! empty( $present_cloudflare_headers );
-		$can_disable_test_mode = CF_Request_Filter::is_effective_request_cloudflare();
+		$effective_cloudflare_check = CF_Request_Filter::is_effective_request_cloudflare();
+		$can_disable_test_mode = ( true === $effective_cloudflare_check );
+		$effective_cloudflare_reasons = is_array( $effective_cloudflare_check ) ? $effective_cloudflare_check : array();
 
 		$forwarded_for_header = isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) : '';
 
@@ -58,7 +60,12 @@ class CF_Admin_Page {
 				<?php endif; ?>
 			</p>
 			<?php if ( ! $can_disable_test_mode ) : ?>
-				<p><em>Your current IP is not within Cloudflare's IP range, so test mode cannot be disabled.</em></p>
+				<p><em>Test mode cannot be disabled for the following reason(s):</em></p>
+				<ul>
+					<?php foreach ( $effective_cloudflare_reasons as $reason ) : ?>
+						<li><?php echo esc_html( $reason ); ?></li>
+					<?php endforeach; ?>
+				</ul>
 			<?php endif; ?>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="cfow_toggle_test_mode" />
@@ -126,13 +133,14 @@ class CF_Admin_Page {
 						<th>IP Address</th>
 						<th>Request URI</th>
 						<th>User Agent</th>
+						<th>Reason</th>
 						<th>Headers</th>
 					</tr>
 				</thead>
 				<tbody>
 					<?php if ( empty( $logs ) ) : ?>
 						<tr>
-							<td colspan="5">No logs found.</td>
+							<td colspan="6">No logs found.</td>
 						</tr>
 					<?php else : ?>
 						<?php foreach ( $logs as $entry ) : ?>
@@ -141,6 +149,7 @@ class CF_Admin_Page {
 								<td><?php echo esc_html( $entry['ip'] ); ?></td>
 								<td><?php echo esc_html( $entry['uri'] ); ?></td>
 								<td><?php echo esc_html( isset( $entry['user_agent'] ) ? $entry['user_agent'] : '' ); ?></td>
+								<td><?php echo esc_html( isset( $entry['reason'] ) ? $entry['reason'] : '' ); ?></td>
 								<td><?php echo self::format_log_headers( isset( $entry['headers'] ) ? $entry['headers'] : array() ); ?></td>
 							</tr>
 						<?php endforeach; ?>
@@ -199,7 +208,8 @@ class CF_Admin_Page {
 
 		$requested_test_mode = isset( $_POST['cfow_test_mode'] ) ? '1' : '0';
 
-		$can_disable_test_mode = CF_Request_Filter::is_effective_request_cloudflare();
+		$effective_cloudflare_check = CF_Request_Filter::is_effective_request_cloudflare();
+		$can_disable_test_mode = ( true === $effective_cloudflare_check );
 
 		if ( '0' === $requested_test_mode && ! $can_disable_test_mode ) {
 			wp_safe_redirect( admin_url( 'tools.php?page=cloudflare-only-wp&cfow_notice=test_mode_blocked' ) );

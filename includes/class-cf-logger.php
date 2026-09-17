@@ -8,7 +8,7 @@ class CF_Logger {
 
 	const MAX_LOG_ENTRIES = 500;
 
-	public static function log( $ip, $request_uri, $user_agent, $headers = array() ) {
+	public static function log( $ip, $request_uri, $user_agent, $headers = array(), $reason = '' ) {
 		$logs = get_option( 'cfow_logs', array() );
 
 		$logs[] = array(
@@ -17,6 +17,7 @@ class CF_Logger {
 			'uri'        => $request_uri,
 			'user_agent' => $user_agent,
 			'headers'    => $headers,
+			'reason'     => $reason,
 		);
 
 		if ( count( $logs ) > self::MAX_LOG_ENTRIES ) {

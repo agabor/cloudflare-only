@@ -28,7 +28,8 @@ class CF_Request_Filter {
 		if ( ! self::is_cloudflare_ip( $client_ip ) ) {
 			$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
 			$user_agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
-			CF_Logger::log( $client_ip, $request_uri, $user_agent );
+			$forbidden_headers = self::get_forbidden_headers();
+			CF_Logger::log( $client_ip, $request_uri, $user_agent, $forbidden_headers );
 
 			if ( ! self::is_test_mode() ) {
 				self::deny_access();
@@ -45,6 +46,28 @@ class CF_Request_Filter {
 			return sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
 		}
 		return '';
+	}
+
+	public static function get_forbidden_headers() {
+		$header_map = array(
+			'CF-Connecting-IP'    => 'HTTP_CF_CONNECTING_IP',
+			'True-Client-IP'      => 'HTTP_TRUE_CLIENT_IP',
+			'X-Forwarded-For'     => 'HTTP_X_FORWARDED_FOR',
+			'X-Real-IP'           => 'HTTP_X_REAL_IP',
+			'Forwarded'           => 'HTTP_FORWARDED',
+			'X-Client-IP'         => 'HTTP_X_CLIENT_IP',
+			'X-Cluster-Client-IP' => 'HTTP_X_CLUSTER_CLIENT_IP',
+		);
+
+		$headers = array();
+
+		foreach ( $header_map as $label => $server_key ) {
+			if ( isset( $_SERVER[ $server_key ] ) ) {
+				$headers[ $label ] = sanitize_text_field( wp_unslash( $_SERVER[ $server_key ] ) );
+			}
+		}
+
+		return $headers;
 	}
 
 	public static function is_cloudflare_ip( $ip ) {

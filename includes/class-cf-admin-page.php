@@ -92,12 +92,13 @@ class CF_Admin_Page {
 						<th>IP Address</th>
 						<th>Request URI</th>
 						<th>User Agent</th>
+						<th>Headers</th>
 					</tr>
 				</thead>
 				<tbody>
 					<?php if ( empty( $logs ) ) : ?>
 						<tr>
-							<td colspan="4">No logs found.</td>
+							<td colspan="5">No logs found.</td>
 						</tr>
 					<?php else : ?>
 						<?php foreach ( $logs as $entry ) : ?>
@@ -106,6 +107,7 @@ class CF_Admin_Page {
 								<td><?php echo esc_html( $entry['ip'] ); ?></td>
 								<td><?php echo esc_html( $entry['uri'] ); ?></td>
 								<td><?php echo esc_html( isset( $entry['user_agent'] ) ? $entry['user_agent'] : '' ); ?></td>
+								<td><?php echo self::format_log_headers( isset( $entry['headers'] ) ? $entry['headers'] : array() ); ?></td>
 							</tr>
 						<?php endforeach; ?>
 					<?php endif; ?>
@@ -121,6 +123,20 @@ class CF_Admin_Page {
 			</form>
 		</div>
 		<?php
+	}
+
+	private static function format_log_headers( $headers ) {
+		if ( empty( $headers ) || ! is_array( $headers ) ) {
+			return '';
+		}
+
+		$lines = array();
+
+		foreach ( $headers as $label => $value ) {
+			$lines[] = '<strong>' . esc_html( $label ) . ':</strong> ' . esc_html( $value );
+		}
+
+		return implode( '<br />', $lines );
 	}
 
 	public static function handle_clear_logs() {

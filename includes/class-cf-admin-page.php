@@ -35,6 +35,9 @@ class CF_Admin_Page {
 		$is_reduced_security_mode = CF_Request_Filter::is_reduced_security_mode();
 		$current_ip = CF_Request_Filter::get_client_ip();
 		$current_ip_is_cloudflare = ! empty( $current_ip ) ? CF_Request_Filter::is_cloudflare_ip( $current_ip ) : false;
+		$forwarded_ips = CF_Request_Filter::get_forwarded_for_ips();
+		$forwarded_ip_is_cloudflare = CF_Request_Filter::any_forwarded_ip_is_cloudflare( $forwarded_ips );
+		$can_disable_test_mode = CF_Request_Filter::is_effective_request_cloudflare();
 
 		$forwarded_for_header = isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) : '';
 
@@ -54,18 +57,18 @@ class CF_Admin_Page {
 					Test mode is currently <strong>OFF</strong>. Requests outside Cloudflare's IP ranges are blocked.
 				<?php endif; ?>
 			</p>
-			<?php if ( ! $current_ip_is_cloudflare ) : ?>
+			<?php if ( ! $can_disable_test_mode ) : ?>
 				<p><em>Your current IP is not within Cloudflare's IP range, so test mode cannot be disabled.</em></p>
 			<?php endif; ?>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="cfow_toggle_test_mode" />
 				<?php wp_nonce_field( 'cfow_toggle_test_mode_action', 'cfow_toggle_test_mode_nonce' ); ?>
 				<label>
-					<input type="checkbox" name="cfow_test_mode" value="1" <?php checked( $is_test_mode ); ?> <?php disabled( ! $current_ip_is_cloudflare ); ?> />
+					<input type="checkbox" name="cfow_test_mode" value="1" <?php checked( $is_test_mode ); ?> <?php disabled( ! $can_disable_test_mode ); ?> />
 					Enable Test Mode
 				</label>
 				<p class="submit">
-					<input type="submit" class="button button-primary" value="Save" <?php disabled( ! $current_ip_is_cloudflare ); ?> />
+					<input type="submit" class="button button-primary" value="Save" <?php disabled( ! $can_disable_test_mode ); ?> />
 				</p>
 			</form>
 
@@ -97,7 +100,9 @@ class CF_Admin_Page {
                 <strong>IP Address:</strong> <?php echo esc_html( $current_ip ); ?><br />
                 <strong>X-Forwarded-For:</strong> <?php echo esc_html( $forwarded_for_header ); ?><br />
 				<strong>Within Cloudflare's IP Range:</strong>
-				<?php echo $current_ip_is_cloudflare ? 'Yes' : 'No'; ?>
+				<?php echo $current_ip_is_cloudflare ? 'Yes' : 'No'; ?><br />
+				<strong>Any X-Forwarded-For IP Within Cloudflare's IP Range:</strong>
+				<?php echo $forwarded_ip_is_cloudflare ? 'Yes' : 'No'; ?>
 			</p>
 
 			<h2>IP Ranges</h2>
@@ -190,10 +195,9 @@ class CF_Admin_Page {
 
 		$requested_test_mode = isset( $_POST['cfow_test_mode'] ) ? '1' : '0';
 
-		$current_ip = CF_Request_Filter::get_client_ip();
-		$current_ip_is_cloudflare = ! empty( $current_ip ) ? CF_Request_Filter::is_cloudflare_ip( $current_ip ) : false;
+		$can_disable_test_mode = CF_Request_Filter::is_effective_request_cloudflare();
 
-		if ( '0' === $requested_test_mode && ! $current_ip_is_cloudflare ) {
+		if ( '0' === $requested_test_mode && ! $can_disable_test_mode ) {
 			wp_safe_redirect( admin_url( 'tools.php?page=cloudflare-only-wp&cfow_notice=test_mode_blocked' ) );
 			exit;
 		}

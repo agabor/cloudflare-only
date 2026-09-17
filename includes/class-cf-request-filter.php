@@ -25,17 +25,7 @@ class CF_Request_Filter {
 			return;
 		}
 
-		$is_cloudflare = self::is_cloudflare_ip( $client_ip );
-
-		if ( ! $is_cloudflare && self::is_reduced_security_mode() ) {
-			$forwarded_ips = self::get_forwarded_for_ips();
-			foreach ( $forwarded_ips as $forwarded_ip ) {
-				if ( ! empty( $forwarded_ip ) && self::is_cloudflare_ip( $forwarded_ip ) ) {
-					$is_cloudflare = true;
-					break;
-				}
-			}
-		}
+		$is_cloudflare = self::is_effective_request_cloudflare();
 
 		if ( ! $is_cloudflare ) {
 			$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
@@ -47,6 +37,35 @@ class CF_Request_Filter {
 				self::deny_access();
 			}
 		}
+	}
+
+	public static function is_effective_request_cloudflare() {
+		$client_ip = self::get_client_ip();
+
+		if ( empty( $client_ip ) ) {
+			return false;
+		}
+
+		$is_cloudflare = self::is_cloudflare_ip( $client_ip );
+
+		if ( ! $is_cloudflare && self::is_reduced_security_mode() ) {
+			$forwarded_ips = self::get_forwarded_for_ips();
+			if ( self::any_forwarded_ip_is_cloudflare( $forwarded_ips ) ) {
+				$is_cloudflare = true;
+			}
+		}
+
+		return $is_cloudflare;
+	}
+
+	public static function any_forwarded_ip_is_cloudflare( $forwarded_ips ) {
+		foreach ( $forwarded_ips as $forwarded_ip ) {
+			if ( ! empty( $forwarded_ip ) && self::is_cloudflare_ip( $forwarded_ip ) ) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	public static function is_test_mode() {

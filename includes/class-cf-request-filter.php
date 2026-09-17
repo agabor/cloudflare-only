@@ -28,8 +28,15 @@ class CF_Request_Filter {
 		if ( ! self::is_cloudflare_ip( $client_ip ) ) {
 			$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
 			CF_Logger::log( $client_ip, $request_uri );
-			self::deny_access();
+
+			if ( ! self::is_test_mode() ) {
+				self::deny_access();
+			}
 		}
+	}
+
+	public static function is_test_mode() {
+		return '1' === get_option( 'cfow_test_mode', '1' );
 	}
 
 	public static function get_client_ip() {

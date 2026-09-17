@@ -38,6 +38,7 @@ class Cloudflare_Only_WP {
 	public static function activate() {
 		CF_IP_Manager::update_ip_ranges();
 		CF_IP_Manager::schedule_cron();
+		add_option( 'cfow_test_mode', '1' );
 	}
 
 	public static function deactivate() {

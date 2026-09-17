@@ -10,6 +10,7 @@ class CF_Admin_Page {
 		add_action( 'admin_menu', array( 'CF_Admin_Page', 'add_menu' ) );
 		add_action( 'admin_post_cfow_clear_logs', array( 'CF_Admin_Page', 'handle_clear_logs' ) );
 		add_action( 'admin_post_cfow_toggle_test_mode', array( 'CF_Admin_Page', 'handle_toggle_test_mode' ) );
+		add_action( 'admin_post_cfow_toggle_reduced_security_mode', array( 'CF_Admin_Page', 'handle_toggle_reduced_security_mode' ) );
 	}
 
 	public static function add_menu() {
@@ -31,6 +32,7 @@ class CF_Admin_Page {
 		$last_updated = CF_IP_Manager::get_last_updated();
 		$logs = CF_Logger::get_logs();
 		$is_test_mode = CF_Request_Filter::is_test_mode();
+		$is_reduced_security_mode = CF_Request_Filter::is_reduced_security_mode();
 		$current_ip = CF_Request_Filter::get_client_ip();
 		$current_ip_is_cloudflare = ! empty( $current_ip ) ? CF_Request_Filter::is_cloudflare_ip( $current_ip ) : false;
 
@@ -64,6 +66,29 @@ class CF_Admin_Page {
 				</label>
 				<p class="submit">
 					<input type="submit" class="button button-primary" value="Save" <?php disabled( ! $current_ip_is_cloudflare ); ?> />
+				</p>
+			</form>
+
+			<h2>Reduced Security Mode</h2>
+			<div class="notice notice-warning inline">
+				<p><strong>Warning:</strong> The <code>X-Forwarded-For</code> header can be forged by visitors unless your infrastructure guarantees it is set correctly (for example, by a trusted reverse proxy that overwrites or appends to it). Enabling this mode may allow attackers to bypass Cloudflare IP restrictions by spoofing this header. Only enable this if you understand the risks and have verified that this header cannot be forged in your environment.</p>
+			</div>
+			<p>
+				<?php if ( $is_reduced_security_mode ) : ?>
+					Reduced security mode is currently <strong>ON</strong>. Requests whose <code>X-Forwarded-For</code> IP is within Cloudflare's ranges are also treated as coming from Cloudflare.
+				<?php else : ?>
+					Reduced security mode is currently <strong>OFF</strong>. Only the direct connection IP address is checked against Cloudflare's ranges.
+				<?php endif; ?>
+			</p>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<input type="hidden" name="action" value="cfow_toggle_reduced_security_mode" />
+				<?php wp_nonce_field( 'cfow_toggle_reduced_security_mode_action', 'cfow_toggle_reduced_security_mode_nonce' ); ?>
+				<label>
+					<input type="checkbox" name="cfow_reduced_security_mode" value="1" <?php checked( $is_reduced_security_mode ); ?> />
+					Enable Reduced Security Mode
+				</label>
+				<p class="submit">
+					<input type="submit" class="button button-primary" value="Save" />
 				</p>
 			</form>
 
@@ -174,6 +199,23 @@ class CF_Admin_Page {
 		}
 
 		update_option( 'cfow_test_mode', $requested_test_mode );
+
+		wp_safe_redirect( admin_url( 'tools.php?page=cloudflare-only-wp' ) );
+		exit;
+	}
+
+	public static function handle_toggle_reduced_security_mode() {
+		if ( ! isset( $_POST['cfow_toggle_reduced_security_mode_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['cfow_toggle_reduced_security_mode_nonce'] ) ), 'cfow_toggle_reduced_security_mode_action' ) ) {
+			wp_die( 'Security check failed.' );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'You do not have permission to perform this action.' );
+		}
+
+		$requested_reduced_security_mode = isset( $_POST['cfow_reduced_security_mode'] ) ? '1' : '0';
+
+		update_option( 'cfow_reduced_security_mode', $requested_reduced_security_mode );
 
 		wp_safe_redirect( admin_url( 'tools.php?page=cloudflare-only-wp' ) );
 		exit;

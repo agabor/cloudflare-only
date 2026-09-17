@@ -25,7 +25,16 @@ class CF_Request_Filter {
 			return;
 		}
 
-		if ( ! self::is_cloudflare_ip( $client_ip ) ) {
+		$is_cloudflare = self::is_cloudflare_ip( $client_ip );
+
+		if ( ! $is_cloudflare && self::is_reduced_security_mode() ) {
+			$forwarded_ip = self::get_forwarded_for_ip();
+			if ( ! empty( $forwarded_ip ) && self::is_cloudflare_ip( $forwarded_ip ) ) {
+				$is_cloudflare = true;
+			}
+		}
+
+		if ( ! $is_cloudflare ) {
 			$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
 			$user_agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
 			$forbidden_headers = self::get_forbidden_headers();
@@ -41,9 +50,22 @@ class CF_Request_Filter {
 		return '1' === get_option( 'cfow_test_mode', '1' );
 	}
 
+	public static function is_reduced_security_mode() {
+		return '1' === get_option( 'cfow_reduced_security_mode', '0' );
+	}
+
 	public static function get_client_ip() {
 		if ( isset( $_SERVER['REMOTE_ADDR'] ) ) {
 			return sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
+		}
+		return '';
+	}
+
+	public static function get_forwarded_for_ip() {
+		if ( isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
+			$header = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) );
+			$ips = explode( ',', $header );
+			return trim( $ips[0] );
 		}
 		return '';
 	}

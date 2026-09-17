@@ -35,8 +35,8 @@ class CF_Admin_Page {
 		$is_reduced_security_mode = CF_Request_Filter::is_reduced_security_mode();
 		$current_ip = CF_Request_Filter::get_client_ip();
 		$current_ip_is_cloudflare = ! empty( $current_ip ) ? CF_Request_Filter::is_cloudflare_ip( $current_ip ) : false;
-		$forwarded_ips = CF_Request_Filter::get_forwarded_for_ips();
-		$forwarded_ip_is_cloudflare = CF_Request_Filter::any_forwarded_ip_is_cloudflare( $forwarded_ips );
+		$present_cloudflare_headers = CF_Request_Filter::get_present_cloudflare_headers();
+		$has_cloudflare_headers = ! empty( $present_cloudflare_headers );
 		$can_disable_test_mode = CF_Request_Filter::is_effective_request_cloudflare();
 
 		$forwarded_for_header = isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) : '';
@@ -74,11 +74,11 @@ class CF_Admin_Page {
 
 			<h2>Reduced Security Mode</h2>
 			<div class="notice notice-warning inline">
-				<p><strong>Warning:</strong> The <code>X-Forwarded-For</code> header can be forged by visitors unless your infrastructure guarantees it is set correctly (for example, by a trusted reverse proxy that overwrites or appends to it). Enabling this mode may allow attackers to bypass Cloudflare IP restrictions by spoofing this header. Only enable this if you understand the risks and have verified that this header cannot be forged in your environment.</p>
+				<p><strong>Warning:</strong> The <code>CF-Connecting-IP</code>, <code>CF-IPCountry</code>, <code>CF-Ray</code>, and <code>CF-Visitor</code> headers are normally only set by Cloudflare, but they can be forged by visitors unless your infrastructure guarantees that requests cannot bypass Cloudflare and reach your origin directly. Enabling this mode may allow attackers to bypass Cloudflare IP restrictions by spoofing these headers. Only enable this if you understand the risks and have verified that your origin server is not directly reachable, bypassing Cloudflare.</p>
 			</div>
 			<p>
 				<?php if ( $is_reduced_security_mode ) : ?>
-					Reduced security mode is currently <strong>ON</strong>. Requests whose <code>X-Forwarded-For</code> IP is within Cloudflare's ranges are also treated as coming from Cloudflare.
+					Reduced security mode is currently <strong>ON</strong>. Requests that include one or more well-known Cloudflare headers are also treated as coming from Cloudflare.
 				<?php else : ?>
 					Reduced security mode is currently <strong>OFF</strong>. Only the direct connection IP address is checked against Cloudflare's ranges.
 				<?php endif; ?>
@@ -101,8 +101,12 @@ class CF_Admin_Page {
                 <strong>X-Forwarded-For:</strong> <?php echo esc_html( $forwarded_for_header ); ?><br />
 				<strong>Within Cloudflare's IP Range:</strong>
 				<?php echo $current_ip_is_cloudflare ? 'Yes' : 'No'; ?><br />
-				<strong>Any X-Forwarded-For IP Within Cloudflare's IP Range:</strong>
-				<?php echo $forwarded_ip_is_cloudflare ? 'Yes' : 'No'; ?>
+				<strong>Cloudflare Headers Present:</strong>
+				<?php echo $has_cloudflare_headers ? 'Yes' : 'No'; ?>
+				<?php if ( $has_cloudflare_headers ) : ?>
+					<br />
+					<?php echo self::format_log_headers( $present_cloudflare_headers ); ?>
+				<?php endif; ?>
 			</p>
 
 			<h2>IP Ranges</h2>

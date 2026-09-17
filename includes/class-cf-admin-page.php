@@ -91,12 +91,13 @@ class CF_Admin_Page {
 						<th>Timestamp</th>
 						<th>IP Address</th>
 						<th>Request URI</th>
+						<th>User Agent</th>
 					</tr>
 				</thead>
 				<tbody>
 					<?php if ( empty( $logs ) ) : ?>
 						<tr>
-							<td colspan="3">No logs found.</td>
+							<td colspan="4">No logs found.</td>
 						</tr>
 					<?php else : ?>
 						<?php foreach ( $logs as $entry ) : ?>
@@ -104,6 +105,7 @@ class CF_Admin_Page {
 								<td><?php echo esc_html( $entry['timestamp'] ); ?></td>
 								<td><?php echo esc_html( $entry['ip'] ); ?></td>
 								<td><?php echo esc_html( $entry['uri'] ); ?></td>
+								<td><?php echo esc_html( isset( $entry['user_agent'] ) ? $entry['user_agent'] : '' ); ?></td>
 							</tr>
 						<?php endforeach; ?>
 					<?php endif; ?>

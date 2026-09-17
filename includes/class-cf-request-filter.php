@@ -27,7 +27,8 @@ class CF_Request_Filter {
 
 		if ( ! self::is_cloudflare_ip( $client_ip ) ) {
 			$request_uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
-			CF_Logger::log( $client_ip, $request_uri );
+			$user_agent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
+			CF_Logger::log( $client_ip, $request_uri, $user_agent );
 
 			if ( ! self::is_test_mode() ) {
 				self::deny_access();

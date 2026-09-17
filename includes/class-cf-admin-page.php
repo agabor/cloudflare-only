@@ -34,6 +34,8 @@ class CF_Admin_Page {
 		$current_ip = CF_Request_Filter::get_client_ip();
 		$current_ip_is_cloudflare = ! empty( $current_ip ) ? CF_Request_Filter::is_cloudflare_ip( $current_ip ) : false;
 
+		$forwarded_for_header = isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) : '';
+
 		if ( isset( $_GET['cfow_notice'] ) && 'test_mode_blocked' === sanitize_text_field( wp_unslash( $_GET['cfow_notice'] ) ) ) {
 			echo '<div class="notice notice-error"><p>Test mode cannot be disabled because your current IP address is not within Cloudflare\'s IP range.</p></div>';
 		}
@@ -67,7 +69,8 @@ class CF_Admin_Page {
 
 			<h2>Your Current IP</h2>
 			<p>
-				<strong>IP Address:</strong> <?php echo esc_html( $current_ip ); ?><br />
+                <strong>IP Address:</strong> <?php echo esc_html( $current_ip ); ?><br />
+                <strong>X-Forwarded-For:</strong> <?php echo esc_html( $forwarded_for_header ); ?><br />
 				<strong>Within Cloudflare's IP Range:</strong>
 				<?php echo $current_ip_is_cloudflare ? 'Yes' : 'No'; ?>
 			</p>

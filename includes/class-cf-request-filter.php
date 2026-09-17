@@ -28,9 +28,12 @@ class CF_Request_Filter {
 		$is_cloudflare = self::is_cloudflare_ip( $client_ip );
 
 		if ( ! $is_cloudflare && self::is_reduced_security_mode() ) {
-			$forwarded_ip = self::get_forwarded_for_ip();
-			if ( ! empty( $forwarded_ip ) && self::is_cloudflare_ip( $forwarded_ip ) ) {
-				$is_cloudflare = true;
+			$forwarded_ips = self::get_forwarded_for_ips();
+			foreach ( $forwarded_ips as $forwarded_ip ) {
+				if ( ! empty( $forwarded_ip ) && self::is_cloudflare_ip( $forwarded_ip ) ) {
+					$is_cloudflare = true;
+					break;
+				}
 			}
 		}
 
@@ -61,13 +64,22 @@ class CF_Request_Filter {
 		return '';
 	}
 
-	public static function get_forwarded_for_ip() {
+	public static function get_forwarded_for_ips() {
 		if ( isset( $_SERVER['HTTP_X_FORWARDED_FOR'] ) ) {
 			$header = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_FORWARDED_FOR'] ) );
 			$ips = explode( ',', $header );
-			return trim( $ips[0] );
+			$trimmed_ips = array();
+
+			foreach ( $ips as $ip ) {
+				$trimmed_ip = trim( $ip );
+				if ( ! empty( $trimmed_ip ) ) {
+					$trimmed_ips[] = $trimmed_ip;
+				}
+			}
+
+			return $trimmed_ips;
 		}
-		return '';
+		return array();
 	}
 
 	public static function get_forbidden_headers() {

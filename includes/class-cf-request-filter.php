@@ -50,16 +50,17 @@ class CF_Request_Filter {
 		$is_ip_cloudflare = self::is_cloudflare_ip( $client_ip );
 
 		if ( $is_ip_cloudflare ) {
+			self::update_verified_headers_baseline();
 			return true;
 		}
 
 		$reasons = array( 'IP is not from Cloudflare' );
 
-		if ( self::is_reduced_security_mode() ) {
-			$header_map = self::get_cloudflare_header_map();
-			$present_headers = self::get_present_cloudflare_headers();
+		$baseline = self::get_verified_headers_baseline();
 
-			$missing_header_labels = array_diff( array_keys( $header_map ), array_keys( $present_headers ) );
+		if ( ! empty( $baseline ) ) {
+			$present_headers = self::get_present_cloudflare_headers();
+			$missing_header_labels = array_diff( $baseline, array_keys( $present_headers ) );
 
 			if ( empty( $missing_header_labels ) ) {
 				return true;
@@ -68,9 +69,31 @@ class CF_Request_Filter {
 			foreach ( $missing_header_labels as $missing_header_label ) {
 				$reasons[] = $missing_header_label . ' header is missing';
 			}
+		} else {
+			$reasons[] = 'No verified Cloudflare header baseline established yet';
 		}
 
 		return $reasons;
+	}
+
+	public static function update_verified_headers_baseline() {
+		$present_headers = self::get_present_cloudflare_headers();
+		$present_labels = array_keys( $present_headers );
+
+		$baseline = get_option( 'cfow_verified_headers_baseline', array() );
+
+		if ( empty( $baseline ) ) {
+			update_option( 'cfow_verified_headers_baseline', $present_labels );
+			return;
+		}
+
+		$intersected_labels = array_intersect( $baseline, $present_labels );
+
+		update_option( 'cfow_verified_headers_baseline', array_values( $intersected_labels ) );
+	}
+
+	public static function get_verified_headers_baseline() {
+		return get_option( 'cfow_verified_headers_baseline', array() );
 	}
 
 	public static function get_cloudflare_header_map() {
@@ -103,10 +126,6 @@ class CF_Request_Filter {
 
 	public static function is_test_mode() {
 		return '1' === get_option( 'cfow_test_mode', '1' );
-	}
-
-	public static function is_reduced_security_mode() {
-		return '1' === get_option( 'cfow_reduced_security_mode', '0' );
 	}
 
 	public static function get_client_ip() {
